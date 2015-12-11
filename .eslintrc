@@ -1,0 +1,15 @@
+{
+  "extends": "eslint:recommended",
+  "ecmaFeatures": {
+    "arrowFunctions": true,
+    "blockBindings": true,
+    "classes": true,
+    "defaultParams": true,
+    "generators": true,
+    "modules": true,
+    "templateStrings": true
+  },
+  "rules": {
+    "no-sequences": 1
+  }
+}
