@@ -21,25 +21,27 @@ class LocalDb {
         this.states[stateId] = Object.assign({}, this.initialState, {stateId: stateId});
         this.actions[stateId] = [];
 
-        return stateId;
+        return Promise.resolve(stateId);
     }
 
     getState(stateId) {
-        return this.states[stateId]
+        return Promise.resolve(this.states[stateId])
     }
 
     saveState(state) {
         this.states[state.stateId] = state;
+        return Promise.resolve();
     }
 
     getActions(stateId) {
-        return this.actions[stateId];
+        return Promise.resolve(this.actions[stateId]);
     }
 
     saveAction(action) {
         const stateId = action.stateId;
         this.actions[stateId] = this.actions[stateId].concat(action);
-        this.eventEmitter.emit('new-action');
+        this.eventEmitter.emit('new-action', action);
+        return Promise.resolve();
     }
 
 }

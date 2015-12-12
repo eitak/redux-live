@@ -1,4 +1,5 @@
 import { createStore, applyMiddleware } from 'redux'
+import moment from 'moment'
 
 import SaveActionMiddleware from '../shared/save-action-middleware'
 import SocketioConnection from './socketio'
@@ -15,10 +16,13 @@ export default class ReduxLiveServer {
         this.actions = actions;
 
         this.saveActionToDb = wrap(async(action, state) => {
-            const actionToSave = Object.assign({}, action, {timestamp: moment().unix()});
-            await this.db.saveAction(actionToSave);
-            await this.db.saveState(state);
-            console.log('Saved action and state')
+            try {
+                const actionToSave = Object.assign({}, action, {timestamp: moment().unix()});
+                await this.db.saveAction(actionToSave);
+                await this.db.saveState(state);
+            } catch (e) {
+                console.error('Failed to save action', e);
+            }
         });
     }
 
@@ -26,10 +30,11 @@ export default class ReduxLiveServer {
         const saveActionMiddleware = SaveActionMiddleware(this.actions, this.saveActionToDb);
         const createStoreWithMiddleware = applyMiddleware(saveActionMiddleware)(createStore);
 
-        return SocketioConnection(this.server, this.db.eventEmitter, action => {
-            const store = createStoreWithMiddleware(this.reducer, this.db.getState(action.stateId));
+        return SocketioConnection(this.server, this.db.eventEmitter, wrap(async action => {
+            const state = await this.db.getState(action.stateId);
+            const store = createStoreWithMiddleware(this.reducer, state);
             store.dispatch(action);
-        });
+        }));
     }
 
     createRestApiRouter() {

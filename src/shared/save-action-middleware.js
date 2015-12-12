@@ -19,6 +19,8 @@ const createSaveActionMiddleware = (serverActions, saveAction) => store => next 
     const newState = store.getState();
     if (initialState === newState) {
         console.log('Not saving action, as there was no change.', action);
+    } else if (action.timestamp) {
+        console.log('Not saving action, as it is already saved.');
     } else {
         saveAction(action, newState);
     }

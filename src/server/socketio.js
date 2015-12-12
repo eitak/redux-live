@@ -1,7 +1,7 @@
 import { SAVE_ACTION } from '../shared/events'
 import socketio from 'socket.io'
 
-export default (server, dbChangeEmitter, createStore) => {
+export default (server, dbChangeEmitter, saveAction) => {
 
     const io = socketio(server);
 
@@ -10,12 +10,7 @@ export default (server, dbChangeEmitter, createStore) => {
     });
 
     io.on('connection', socket => {
-        socket.on(SAVE_ACTION, action => {
-            const store = createStore(reducer, db.getState(action.stateId));
-            store.dispatch(action);
-        });
+        socket.on(SAVE_ACTION, saveAction);
     });
-
-    return io;
 
 }
