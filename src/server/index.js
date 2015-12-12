@@ -5,8 +5,6 @@ import SaveActionMiddleware from '../shared/save-action-middleware'
 import SocketioConnection from './socketio'
 import RestApiRouter from './express-router'
 
-const wrap = fn => (...args) => fn(...args).catch(args[2]);
-
 export default class ReduxLiveServer {
 
     constructor(server, db, reducer, actions) {
@@ -15,7 +13,7 @@ export default class ReduxLiveServer {
         this.reducer = reducer;
         this.actions = actions;
 
-        this.saveActionToDb = wrap(async(action, state) => {
+        this.saveActionToDb = async(action, state) => {
             try {
                 const actionToSave = Object.assign({}, action, {timestamp: moment().unix()});
                 await this.db.saveAction(actionToSave);
@@ -23,22 +21,22 @@ export default class ReduxLiveServer {
             } catch (e) {
                 console.error('Failed to save action', e);
             }
-        });
+        };
     }
 
     createSocketioConnection() {
         const saveActionMiddleware = SaveActionMiddleware(this.actions, this.saveActionToDb);
         const createStoreWithMiddleware = applyMiddleware(saveActionMiddleware)(createStore);
 
-        return SocketioConnection(this.server, this.db.eventEmitter, wrap(async action => {
+        return SocketioConnection(this.server, this.db.eventEmitter, async action => {
             const state = await this.db.getState(action.stateId);
             const store = createStoreWithMiddleware(this.reducer, state);
             store.dispatch(action);
-        }));
+        });
     }
 
     createRestApiRouter() {
-        return RestApiRouter(this.saveActionToDb);
+        return RestApiRouter(this.db, this.saveActionToDb);
     }
 
 }
