@@ -14,9 +14,14 @@ describe('ServerActionManager', () => {
     beforeEach(() => {
         actionsSaved = [];
         underTest = new ServerActionManager(
-            (sequenceNumber) => Promise.resolve(actions[sequenceNumber - 1]),
-            () => Promise.resolve(3),
-            (action) => { actionsSaved.push(action); return Promise.resolve() },
+            {
+                getActionBySequenceNumber: (sequenceNumber) => Promise.resolve(actions[sequenceNumber - 1]),
+                getLastSequenceNumber: () => Promise.resolve(3),
+                saveAction: (action) => {
+                    actionsSaved.push(action);
+                    return Promise.resolve()
+                }
+            },
             (a1, a2) => [`(${a1}-${a2})`, `(${a1}x${a2})`]);
     });
 
