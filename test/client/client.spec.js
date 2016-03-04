@@ -1,4 +1,4 @@
-import {ClientActionManager} from '../src/client'
+import {ClientActionManager} from '../../src/client/client'
 
 require("babel-polyfill");
 require('should');

@@ -7,7 +7,7 @@
     "test": "test"
   },
   "scripts": {
-    "test": "mocha --compilers js:babel-register --reporter nyan",
+    "test": "mocha --compilers js:babel-register --reporter nyan --recursive",
     "compile": "babel -d lib/ src/",
     "prepublish": "npm run compile"
   },

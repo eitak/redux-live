@@ -1,4 +1,4 @@
-import {ServerActionManager} from '../src/server'
+import {ServerActionManager} from '../../src/server/server'
 
 describe('ServerActionManager', () => {
 
