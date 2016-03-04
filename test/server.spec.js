@@ -1,4 +1,4 @@
-import {ServerActionManager} from '../server'
+import {ServerActionManager} from '../src/server'
 
 describe('ServerActionManager', () => {
 
@@ -14,44 +14,49 @@ describe('ServerActionManager', () => {
     beforeEach(() => {
         actionsSaved = [];
         underTest = new ServerActionManager(
-            (sequenceNumber) => actions[sequenceNumber - 1],
-            () => 3,
-            (action) => actionsSaved.push(action),
+            (sequenceNumber) => Promise.resolve(actions[sequenceNumber - 1]),
+            () => Promise.resolve(3),
+            (action) => { actionsSaved.push(action); return Promise.resolve() },
             (a1, a2) => [`(${a1}-${a2})`, `(${a1}x${a2})`]);
     });
 
-    it('should reject actions with parent not saved on the server', () => {
-        (() => underTest.applyClientAction({
-            stateId: 'test-state-id',
-            sequenceNumber: 5,
-            action: 'action4',
-            clientId: clientId
-        })).should.throw();
+    it('should reject actions with parent not saved on the server', async function() {
+        try {
+            await underTest.applyClientAction({
+                stateId: 'test-state-id',
+                sequenceNumber: 5,
+                action: 'action4',
+                clientId: clientId
+            });
+            should.fail('no error was thrown when it should have been');
+        } catch (err) {
+            // expected
+        }
 
         actionsSaved.should.be.empty();
     });
 
-    it('should save actions where the parent is the last saved action', () => {
-        var actionToSave = {
+    it('should save actions where the parent is the last saved action', async function() {
+        const actionToSave = {
             stateId: 'test-state-id',
             sequenceNumber: 4,
             action: 'action4',
             clientId: clientId
         };
-        underTest.applyClientAction(actionToSave);
+        await underTest.applyClientAction(actionToSave);
 
         actionsSaved.should.have.length(1);
         actionsSaved[0].should.eql(actionToSave);
     });
 
-    it('should save actions where the parent is not the last saved action', () => {
-        var actionToSave = {
+    it('should save actions where the parent is not the last saved action', async function() {
+        const actionToSave = {
             stateId: 'test-state-id',
             sequenceNumber: 2,
             action: 'action4',
             clientId: clientId
         };
-        underTest.applyClientAction(actionToSave);
+        await underTest.applyClientAction(actionToSave);
 
         actionsSaved.should.have.length(1);
         actionsSaved[0].should.eql({

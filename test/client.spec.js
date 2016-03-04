@@ -1,5 +1,6 @@
-import {ClientActionManager} from '../client'
+import {ClientActionManager} from '../src/client'
 
+require("babel-polyfill");
 require('should');
 
 describe('ClientActionManager', () => {
@@ -13,19 +14,20 @@ describe('ClientActionManager', () => {
     const action5 = 'action5';
 
     const clientId = 'test-client';
+    const stateId = 'test-state';
 
     beforeEach(() => {
         actionsSentToClient = [];
         actionsSentToServer =[];
         underTest = new ClientActionManager(
-            (action) => actionsSentToServer.push(action),
-            (action) => actionsSentToClient.push(action),
+            (action) => { actionsSentToServer.push(action); return Promise.resolve() },
+            (action) => { actionsSentToClient.push(action); return Promise.resolve() },
             (a1, a2) => [`(${a1}-${a2})`, `(${a1}x${a2})`],
-            1, clientId);
+            1, clientId, stateId);
     });
 
-    it('should apply client actions and send request to server', () => {
-        underTest.applyClientAction(action1);
+    it('should apply client actions and send request to server', async function() {
+        await underTest.applyClientAction(action1);
 
         actionsSentToClient.should.have.length(1);
         actionsSentToClient[0].should.eql(action1);
@@ -35,8 +37,8 @@ describe('ClientActionManager', () => {
         actionsSentToServer[0].sequenceNumber.should.eql(2);
     });
 
-    it('should apply actions received from the server', () => {
-        underTest.applyServerAction({ action: action1, sequenceNumber: 2 });
+    it('should apply actions received from the server', async function() {
+        await underTest.applyServerAction({ action: action1, sequenceNumber: 2, stateId: stateId });
 
         actionsSentToClient.should.have.length(1);
         actionsSentToClient[0].should.eql(action1);
@@ -44,10 +46,10 @@ describe('ClientActionManager', () => {
         actionsSentToServer.should.be.empty();
     });
 
-    it('should set the sequence number as the last server sequence number + 1', () => {
-        underTest.applyServerAction({ action: action1, sequenceNumber: 2 });
+    it('should set the sequence number as the last server sequence number + 1', async function() {
+        await underTest.applyServerAction({ action: action1, sequenceNumber: 2, stateId: stateId });
 
-        underTest.applyClientAction(action2);
+        await underTest.applyClientAction(action2);
 
         actionsSentToClient.should.have.length(2);
         actionsSentToClient[0].should.eql(action1);
@@ -58,23 +60,30 @@ describe('ClientActionManager', () => {
         actionsSentToServer[0].sequenceNumber.should.eql(3);
     });
 
-    it('should ignore server actions which were initiated by this client', () => {
-        underTest.applyServerAction({ action: action1, sequenceNumber: 2, clientId: clientId });
+    it('should ignore server actions which were initiated by this client', async function() {
+        await underTest.applyServerAction({ action: action1, sequenceNumber: 2, clientId: clientId, stateId: stateId });
 
         actionsSentToServer.should.have.length(0);
         actionsSentToClient.should.have.length(0);
     });
 
-    it('should ignore server actions which have the same sequence number as the last one', () => {
-        underTest.applyServerAction({ action: action1, sequenceNumber: 1, clientId: clientId });
+    it('should ignore server actions with wrong state ID', async function() {
+        await underTest.applyServerAction({ action: action1, sequenceNumber: 2, stateId: 'invalid' });
 
         actionsSentToServer.should.have.length(0);
         actionsSentToClient.should.have.length(0);
     });
 
-    it('should apply transformed action to client', () => {
-        underTest.applyClientAction(action1);
-        underTest.applyServerAction({ action: action2, sequenceNumber: 2 });
+    it('should ignore server actions which have the same sequence number as the last one', async function() {
+        await underTest.applyServerAction({ action: action1, sequenceNumber: 1, stateId: stateId });
+
+        actionsSentToServer.should.have.length(0);
+        actionsSentToClient.should.have.length(0);
+    });
+
+    it('should apply transformed action to client', async function() {
+        await underTest.applyClientAction(action1);
+        await underTest.applyServerAction({ action: action2, sequenceNumber: 2, stateId: stateId });
 
         actionsSentToServer.should.have.length(1);
         actionsSentToServer[0].action.should.eql(action1);
@@ -85,12 +94,12 @@ describe('ClientActionManager', () => {
         actionsSentToClient[1].should.eql('(action1-action2)');
     });
 
-    it('should handle a more complex transformation', () => {
-        underTest.applyClientAction(action1);
-        underTest.applyClientAction(action2);
-        underTest.applyServerAction({ sequenceNumber: 2, action: action3 });
-        underTest.applyClientAction(action5);
-        underTest.applyServerAction({ sequenceNumber: 3, action: action4 });
+    it('should handle a more complex transformation', async function()  {
+        await underTest.applyClientAction(action1);
+        await underTest.applyClientAction(action2);
+        await underTest.applyServerAction({ sequenceNumber: 2, action: action3, stateId: stateId });
+        await underTest.applyClientAction(action5);
+        await underTest.applyServerAction({ sequenceNumber: 3, action: action4, stateId: stateId });
 
         actionsSentToClient.should.have.length(5);
         actionsSentToClient[0].should.eql(action1);

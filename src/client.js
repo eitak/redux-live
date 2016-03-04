@@ -1,5 +1,3 @@
-import uuid from 'node-uuid'
-
 export class ClientActionManager {
 
     constructor(sendActionToServer, sendActionToClient, mergeActions, lastSequenceNumber, clientId, stateId) {
@@ -9,38 +7,29 @@ export class ClientActionManager {
         this.mergeActions = mergeActions;
         this.lastSequenceNumber = lastSequenceNumber;
         this.clientId = clientId;
+        this.stateId = stateId;
     }
 
-    applyClientAction(action) {
-        const actionToSave = {
-            action: action,
-            clientId: this.clientId
-        };
-
-        this.clientActionsToSave.push(actionToSave);
+    async applyClientAction(action) {
+        this.clientActionsToSave.push(action);
 
         if (this.clientActionsToSave.length === 1) {
-            this._sendNextActionToServer();
+            await this._sendNextActionToServer();
         }
 
         console.log('Sending action to client: %j', action);
-        this.sendActionToClient(action);
+        await this.sendActionToClient(action);
     }
 
-    _sendNextActionToServer() {
-        if (this.clientActionsToSave.length > 0) {
-            var actionToSave = Object.assign({}, this.clientActionsToSave[0], {
-                sequenceNumber: this.lastSequenceNumber + 1,
-                stateId: this.stateId
-            });
-            console.log('Sending action to server: %j', actionToSave);
-            this.sendActionToServer(actionToSave);
+    async applyServerAction(action) {
+        const validStateId = action.stateId === this.stateId;
+        if (!validStateId) {
+            console.error('Received action with invalid state ID (expected %s): %j', this.stateId, action);
+            return;
         }
-    }
 
-    applyServerAction(action) {
         const expectedSequenceNumber = this.lastSequenceNumber + 1;
-        var invalidSequenceNumber = action.sequenceNumber !== expectedSequenceNumber;
+        const invalidSequenceNumber = action.sequenceNumber !== expectedSequenceNumber;
         if (invalidSequenceNumber) {
             console.error('Received action with invalid sequence number (expected %d): %j', expectedSequenceNumber, action);
             return;
@@ -52,7 +41,7 @@ export class ClientActionManager {
         if (isKnownAction) {
             console.log('Received confirmation that our action saved: %j', action.action);
             this.clientActionsToSave.shift();
-            this._sendNextActionToServer();
+            await this._sendNextActionToServer();
             return;
         }
 
@@ -61,15 +50,27 @@ export class ClientActionManager {
         const transformedActions = this.clientActionsToSave
             .reduce((transformedActions, nextAction) => {
                 const actionToMergeWith = transformedActions.serverAction;
-                const mergedActions = this.mergeActions(nextAction.action, actionToMergeWith.action);
-                transformedActions.clientActions.push(Object.assign({}, actionToMergeWith, {action: mergedActions[1]}));
-                transformedActions.serverAction = Object.assign({}, nextAction, {action: mergedActions[0]});
+                const mergedActions = this.mergeActions(nextAction, actionToMergeWith);
+                transformedActions.clientActions.push(mergedActions[1]);
+                transformedActions.serverAction = mergedActions[0];
                 return transformedActions;
-            }, {clientActions: [], serverAction: action});
+            }, {clientActions: [], serverAction: action.action});
 
-        const transformedServerAction = transformedActions.serverAction;
-        this.sendActionToClient(transformedServerAction.action);
+        await this.sendActionToClient(transformedActions.serverAction);
         this.clientActionsToSave = transformedActions.clientActions;
+    }
+
+    async _sendNextActionToServer() {
+        if (this.clientActionsToSave.length > 0) {
+            const actionToSave = {
+                action: this.clientActionsToSave[0],
+                sequenceNumber: this.lastSequenceNumber + 1,
+                clientId: this.clientId,
+                stateId: this.stateId
+            };
+            console.log('Sending action to server: %j', actionToSave);
+            await this.sendActionToServer(actionToSave);
+        }
     }
 
 }
