@@ -1,12 +1,14 @@
-export class ClientActionManager {
+require("babel-polyfill");
 
-    constructor(sendActionToServer, sendActionToClient, mergeActions, lastSequenceNumber, clientId, stateId) {
-        this.sendActionToServer = sendActionToServer;
+class ClientActionManager {
+
+    constructor(client, sendActionToClient, mergeActions, stateId) {
+        this.client = client;
         this.sendActionToClient = sendActionToClient;
         this.clientActionsToSave = [];
         this.mergeActions = mergeActions;
-        this.lastSequenceNumber = lastSequenceNumber;
-        this.clientId = clientId;
+        this.lastSequenceNumberPromise = client.getSequenceNumber();
+        client.onNewActionFromServer(this.applyServerAction.bind(this));
         this.stateId = stateId;
     }
 
@@ -22,24 +24,20 @@ export class ClientActionManager {
     }
 
     async applyServerAction(action) {
-        const validStateId = action.stateId === this.stateId;
-        if (!validStateId) {
-            console.error('Received action with invalid state ID (expected %s): %j', this.stateId, action);
-            return;
-        }
-
-        const expectedSequenceNumber = this.lastSequenceNumber + 1;
+        const lastSequenceNumber = await this.lastSequenceNumberPromise;
+        const expectedSequenceNumber = lastSequenceNumber + 1;
         const invalidSequenceNumber = action.sequenceNumber !== expectedSequenceNumber;
         if (invalidSequenceNumber) {
             console.error('Received action with invalid sequence number (expected %d): %j', expectedSequenceNumber, action);
             return;
         }
 
-        this.lastSequenceNumber = action.sequenceNumber;
+        this.lastSequenceNumberPromise = Promise.resolve(action.sequenceNumber);
 
-        const isKnownAction = this.clientId === action.clientId;
+        const clientId = await this.client.getClientId();
+        const isKnownAction = clientId === action.clientId;
         if (isKnownAction) {
-            console.log('Received confirmation that our action saved: %j', action.action);
+            console.log('Received confirmation that our action saved: %j', action);
             this.clientActionsToSave.shift();
             await this._sendNextActionToServer();
             return;
@@ -48,29 +46,34 @@ export class ClientActionManager {
         console.log('Received new action from the server: %j', action);
 
         const transformedActions = this.clientActionsToSave
-            .reduce((transformedActions, nextAction) => {
-                const actionToMergeWith = transformedActions.serverAction;
-                const mergedActions = this.mergeActions(nextAction, actionToMergeWith);
-                transformedActions.clientActions.push(mergedActions[1]);
-                transformedActions.serverAction = mergedActions[0];
+            .reduce((transformedActions, clientActionToSave) => {
+                const actionToMergeWith = transformedActions.newAction;
+                const mergedActions = this.mergeActions(clientActionToSave, actionToMergeWith);
+                transformedActions.transformedClientActions.push(mergedActions[1]);
+                transformedActions.newAction = mergedActions[0];
                 return transformedActions;
-            }, {clientActions: [], serverAction: action.action});
+            }, {transformedClientActions: [], newAction: action.action});
 
-        await this.sendActionToClient(transformedActions.serverAction);
-        this.clientActionsToSave = transformedActions.clientActions;
+        await this.sendActionToClient(transformedActions.newAction);
+        this.clientActionsToSave = transformedActions.transformedClientActions;
     }
 
     async _sendNextActionToServer() {
         if (this.clientActionsToSave.length > 0) {
+            const clientId = await this.client.getClientId();
+            console.log(this.lastSequenceNumberPromise);
+            const lastSequenceNumber = await this.lastSequenceNumberPromise;
+            console.log(lastSequenceNumber);
             const actionToSave = {
                 action: this.clientActionsToSave[0],
-                sequenceNumber: this.lastSequenceNumber + 1,
-                clientId: this.clientId,
-                stateId: this.stateId
+                sequenceNumber: lastSequenceNumber + 1,
+                clientId: clientId
             };
             console.log('Sending action to server: %j', actionToSave);
-            await this.sendActionToServer(actionToSave);
+            await this.client.sendActionToServer(actionToSave);
         }
     }
 
 }
+
+export default ClientActionManager;

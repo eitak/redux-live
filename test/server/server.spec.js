@@ -1,34 +1,47 @@
-import {ServerActionManager} from '../../src/server/server'
+import ServerActionManager from '../../src/server/server'
+import { EventEmitter } from 'events'
 
 describe('ServerActionManager', () => {
 
-    var underTest, actionsSaved;
+    var actionsSaved, actionsSentToClient;
+    const dbEventEmitter = new EventEmitter();
+    const clientEventEmitter = new EventEmitter();
 
     const actions = [
-        { stateId: 'test-state-id', sequenceNumber: 1, action: 'action1' },
-        { stateId: 'test-state-id', sequenceNumber: 2, action: 'action2', parent: 'action1-id' },
-        { stateId: 'test-state-id', sequenceNumber: 3, action: 'action3', parent: 'action2-id' }
+        {sequenceNumber: 1, action: 'action1'},
+        {sequenceNumber: 2, action: 'action2'},
+        {sequenceNumber: 3, action: 'action3'}
     ];
     const clientId = 'test-client';
+    const stateId = 'test-state';
+
+    const underTest = new ServerActionManager(
+        {
+            getActionBySequenceNumber: (stateId, sequenceNumber) => Promise.resolve(actions[sequenceNumber - 1]),
+            getLastSequenceNumber: () => Promise.resolve(3),
+            saveAction: (stateId, action) => {
+                actionsSaved.push(action);
+                return Promise.resolve()
+            },
+            onNewAction: (cb) => dbEventEmitter.on('new-action', cb)
+        },
+        {
+            emitAction: (stateId, action) => {
+                actionsSentToClient.push(action);
+                return Promise.resolve()
+            },
+            onSaveActionRequest: (cb) => clientEventEmitter.on('save-action', cb)
+        },
+        (a1, a2) => [`(${a1}-${a2})`, `(${a1}x${a2})`]);
 
     beforeEach(() => {
         actionsSaved = [];
-        underTest = new ServerActionManager(
-            {
-                getActionBySequenceNumber: (sequenceNumber) => Promise.resolve(actions[sequenceNumber - 1]),
-                getLastSequenceNumber: () => Promise.resolve(3),
-                saveAction: (action) => {
-                    actionsSaved.push(action);
-                    return Promise.resolve()
-                }
-            },
-            (a1, a2) => [`(${a1}-${a2})`, `(${a1}x${a2})`]);
+        actionsSentToClient = [];
     });
 
-    it('should reject actions with parent not saved on the server', async function() {
+    it('should reject actions with parent not saved on the server', async function () {
         try {
-            await underTest.applyClientAction({
-                stateId: 'test-state-id',
+            await underTest.saveAction(stateId, {
                 sequenceNumber: 5,
                 action: 'action4',
                 clientId: clientId
@@ -41,35 +54,44 @@ describe('ServerActionManager', () => {
         actionsSaved.should.be.empty();
     });
 
-    it('should save actions where the parent is the last saved action', async function() {
+    it('should save actions where the parent is the last saved action', async function () {
         const actionToSave = {
-            stateId: 'test-state-id',
             sequenceNumber: 4,
             action: 'action4',
             clientId: clientId
         };
-        await underTest.applyClientAction(actionToSave);
+        await underTest.saveAction(stateId, actionToSave);
 
         actionsSaved.should.have.length(1);
         actionsSaved[0].should.eql(actionToSave);
     });
 
-    it('should save actions where the parent is not the last saved action', async function() {
+    it('should save actions where the parent is not the last saved action', async function () {
         const actionToSave = {
-            stateId: 'test-state-id',
             sequenceNumber: 2,
             action: 'action4',
             clientId: clientId
         };
-        await underTest.applyClientAction(actionToSave);
+        await underTest.saveAction(stateId, actionToSave);
 
         actionsSaved.should.have.length(1);
         actionsSaved[0].should.eql({
-            stateId: 'test-state-id',
             sequenceNumber: 4,
             action: '((action4xaction2)xaction3)',
             clientId: clientId
         });
+    });
+
+    it('should send action to client on db change', () => {
+        const action = {
+            sequenceNumber: 2,
+            action: 'action4',
+            clientId: clientId
+        };
+        dbEventEmitter.emit('new-action', stateId, action);
+
+        actionsSentToClient.should.have.length(1);
+        actionsSentToClient[0].should.eql(action);
     });
 
     it('should retry saving actions when the state changes in between retrieving actions and attempting save', () => {
