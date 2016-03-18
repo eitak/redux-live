@@ -1,16 +1,9 @@
 import _ from 'lodash'
 
-class ServerActionManager {
+function createSaveActionFunction (db, mergeActions) {
 
-    constructor(db, client, mergeActions) {
-        this.db = db;
-        this.mergeActions = mergeActions;
-        this.db.onNewAction(client.emitAction.bind(client));
-        client.onSaveActionRequest(this.saveAction.bind(this));
-    }
-
-    async saveAction(stateId, action) {
-        const lastSequenceNumber = await this.db.getLastSequenceNumber(stateId);
+    return async function saveAction(stateId, action) {
+        const lastSequenceNumber = await db.getLastSequenceNumber(stateId);
         const nextSequenceNumber = lastSequenceNumber + 1;
 
         const invalidSequenceNumber = action.sequenceNumber < 0 || action.sequenceNumber > nextSequenceNumber;
@@ -20,17 +13,17 @@ class ServerActionManager {
         }
 
         const serverActions = await Promise.all(_.range(action.sequenceNumber, nextSequenceNumber)
-                .map((sequenceNumber) => this.db.getActionBySequenceNumber(stateId, sequenceNumber)));
+            .map((sequenceNumber) => db.getActionBySequenceNumber(stateId, sequenceNumber)));
 
         const actionToSave = serverActions
             .reduce((transformedAction, serverAction) => {
-                const mergedActions = this.mergeActions(transformedAction, serverAction.action);
+                const mergedActions = mergeActions(transformedAction, serverAction.action);
                 return mergedActions[1];
             }, action.action);
 
         console.log('Saving for stateId: %s, clientId: %s, sequenceNumber: %s, action: %j',
             stateId, action.clientId, nextSequenceNumber, actionToSave);
-        await this.db.saveAction(stateId, {
+        await db.saveAction(stateId, {
             sequenceNumber: nextSequenceNumber,
             clientId: action.clientId,
             action: actionToSave
@@ -39,4 +32,4 @@ class ServerActionManager {
 
 }
 
-export default ServerActionManager
+export default createSaveActionFunction

@@ -1,7 +1,7 @@
 import io from 'socket.io-client'
 import SocketIoEvents  from '../../shared/events'
 
-class SocketIoServer {
+class SocketIo {
 
     constructor(stateId) {
         this.socket = io();
@@ -11,7 +11,7 @@ class SocketIoServer {
         });
     }
 
-    sendActionToServer(action) {
+    saveAction(action) {
         this.socket.emit(SocketIoEvents.SAVE_ACTION, action);
     }
 
@@ -25,11 +25,16 @@ class SocketIoServer {
         return initialData.sequenceNumber;
     }
 
+    async getInitialState() {
+        const initialData = await this._initialDataPromise;
+        return initialData.state;
+    }
+
     onNewActionFromServer(cb) {
         this.socket.on(this.stateId, cb);
     }
 
 }
 
-export default SocketIoServer;
+export default SocketIo;
 

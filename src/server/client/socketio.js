@@ -8,7 +8,7 @@ const SAVE_ACTION_EVENT = 'save-action';
 
 class SocketIoClient {
 
-    constructor(opts) {
+    constructor(db, opts) {
         if (opts.server) {
             this.io = socketio(opts.server);
         } else if (opts.socketio) {
@@ -22,14 +22,12 @@ class SocketIoClient {
         this.io.on('connection', socket => {
             socket.on(SocketIoEvents.INIT, async (stateId, cb) => {
                 const clientId = uuid.v4();
-                const snapshot = await opts.getSnapshot(stateId);
+                const snapshot = await db.getSnapshot(stateId);
                 cb({sequenceNumber: snapshot.sequenceNumber, clientId: clientId, state: snapshot.state});
 
-                socket.on(SocketIoEvents.SAVE_ACTION, (requestedStateId, action) => {
-                    console.log('Received action from client %s for stateId: %s; action: %j', clientId, requestedStateId, action);
-                    if (stateId !== requestedStateId) {
-                        console.error('Received bad state from client - got: %s, expected %s', requestedStateId, stateId);
-                    }
+                socket.on(SocketIoEvents.SAVE_ACTION, (action) => {
+                    console.log('Received action from client %s for stateId: %s; action: %j', clientId, stateId, action);
+
                     const actionWithClientId = Object.assign({}, action, {clientId: clientId});
                     this._eventEmitter.emit(SAVE_ACTION_EVENT, stateId, actionWithClientId)
                 });
