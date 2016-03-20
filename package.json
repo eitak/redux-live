@@ -1,6 +1,6 @@
 {
   "name": "redux-live",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Lightweight framework for persisting Redux actions to a database",
   "directories": {
     "test": "test"
