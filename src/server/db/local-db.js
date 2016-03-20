@@ -1,5 +1,4 @@
 import { EventEmitter } from 'events'
-import Events from './../events'
 
 const NEW_ACTION_EVENT = 'new-action';
 
@@ -9,6 +8,11 @@ class LocalDb {
         this._eventEmitter = new EventEmitter();
         this._actions = {};
         this._snapshots = {};
+    }
+
+    deleteState(stateId) {
+        delete this._actions[stateId];
+        delete this._snapshots[stateId];
     }
 
     getSnapshot(stateId) {
@@ -26,7 +30,16 @@ class LocalDb {
         });
     }
 
-    // should always be consistent
+    async saveSnapshot(stateId, snapshot) {
+        const previousSnapshot = await this.getSnapshot(stateId);
+        if (previousSnapshot.sequenceNumber !== snapshot.sequenceNumber - 1) {
+            console.warn('Ignoring request to save snapshot, as it has unexpected sequence number' +
+                ' {stateId: %s, snapshot: %j}', stateId, snapshot);
+            return;
+        }
+        this._snapshots[stateId] = snapshot;
+    }
+
     getActionBySequenceNumber(stateId, sequenceNumber) {
         const actionsForState = this._actions[stateId];
         if (!actionsForState) {
@@ -38,16 +51,6 @@ class LocalDb {
         }
 
         return Promise.resolve(actionsForState[sequenceNumber - 1]);
-    }
-
-    // should always be consistent
-    getLastSequenceNumber(stateId) {
-        const actionsForState = this._actions[stateId];
-        if (!actionsForState || actionsForState.length === 0) {
-            return Promise.resolve(0);
-        }
-
-        return Promise.resolve(actionsForState.length);
     }
 
     saveAction(stateId, action) {
