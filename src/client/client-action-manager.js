@@ -23,17 +23,17 @@ class ClientActionManager {
         }
     }
 
-    async applyServerAction(action) {
+    async applyServerAction({ action, sequenceNumber, clientId }) {
         const expectedSequenceNumber = this.sequenceNumber + 1;
-        const invalidSequenceNumber = action.sequenceNumber !== expectedSequenceNumber;
+        const invalidSequenceNumber = sequenceNumber !== expectedSequenceNumber;
         if (invalidSequenceNumber) {
             console.error('Received action with invalid sequence number (expected %d): %j', expectedSequenceNumber, action);
             return;
         }
 
-        this.sequenceNumber = action.sequenceNumber;
+        this.sequenceNumber = sequenceNumber;
 
-        const isKnownAction = this.clientId === action.clientId;
+        const isKnownAction = this.clientId === clientId;
         if (isKnownAction) {
             console.log('Received confirmation that our action saved: %j', action);
             this.actionsToSave.shift();
@@ -50,21 +50,20 @@ class ClientActionManager {
                 transformedActions.transformedClientActions.push(mergedActions[1]);
                 transformedActions.newAction = mergedActions[0];
                 return transformedActions;
-            }, {transformedClientActions: [], newAction: action.action});
+            }, {transformedClientActions: [], newAction: action});
 
-        await this.dispatchAction(Object.assign({}, transformedActions.newAction, {_originatedFromServer: true}));
+        await this.dispatchAction({...transformedActions.newAction, _originatedFromServer: true});
         this.actionsToSave = transformedActions.transformedClientActions;
     }
 
     async _saveAction() {
         if (this.actionsToSave.length > 0) {
-            const actionToSave = {
-                action: this.actionsToSave[0],
-                sequenceNumber: this.sequenceNumber + 1,
-                clientId: this.clientId
-            };
+            const actionToSave = this.actionsToSave[0];
             console.log('Save action: %j', actionToSave);
-            await this.saveAction(actionToSave);
+            await this.saveAction({
+                sequenceNumber: this.sequenceNumber + 1,
+                action: actionToSave
+            });
         }
     }
 

@@ -1,6 +1,5 @@
 import socketio from 'socket.io'
 import SocketIoEvents  from '../../shared/events'
-import Events from './../events'
 import { EventEmitter } from 'events'
 import uuid from 'node-uuid'
 
@@ -25,11 +24,12 @@ class SocketIoClient {
                 const snapshot = await db.getSnapshot(stateId);
                 cb({sequenceNumber: snapshot.sequenceNumber, clientId: clientId, state: snapshot.state});
 
-                socket.on(SocketIoEvents.SAVE_ACTION, (action) => {
-                    console.log('Received action from client %s for stateId: %s; action: %j', clientId, stateId, action);
+                socket.on(SocketIoEvents.SAVE_ACTION, (request) => {
+                    console.log('Received save action request from client %s for stateId: %s; action: %j',
+                        clientId, stateId, request);
 
-                    const actionWithClientId = Object.assign({}, action, {clientId: clientId});
-                    this._eventEmitter.emit(SAVE_ACTION_EVENT, stateId, actionWithClientId)
+                    const requestWithClientId = Object.assign({}, request, {clientId: clientId});
+                    this._eventEmitter.emit(SAVE_ACTION_EVENT, stateId, requestWithClientId)
                 });
 
             });
@@ -37,15 +37,14 @@ class SocketIoClient {
 
     }
 
-    emitAction(stateId, action) {
-        console.log('Emitting action for state %s: %j', stateId, action);
-        this.io.emit(stateId, action);
+    emitAction(stateId, actionSavedEvent) {
+        console.log('Emitting action saved event for state %s: %j', stateId, actionSavedEvent);
+        this.io.emit(stateId, actionSavedEvent);
     }
 
     onSaveActionRequest(cb) {
-        this._eventEmitter.on(SAVE_ACTION_EVENT, (stateId, action) => {
-            console.log('Got save action request for state %s, action %j', stateId, action);
-            cb(stateId, action);
+        this._eventEmitter.on(SAVE_ACTION_EVENT, (stateId, request) => {
+            cb(stateId, request.clientId, request.sequenceNumber, request.action);
         })
     }
 

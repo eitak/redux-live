@@ -5,38 +5,35 @@ describe('saveAction', () => {
     let actionsSaved, snapshotsSaved;
 
     const actions = [
-        {sequenceNumber: 1, action: {type: 'action1'}},
-        {sequenceNumber: 2, action: {type: 'action2'}},
-        {sequenceNumber: 3, action: {type: 'action3'}}
+        {sequenceNumber: 1, type: 'action1'},
+        {sequenceNumber: 2, type: 'action2'},
+        {sequenceNumber: 3, type: 'action3'}
     ];
     const clientId = 'test-client';
     const stateId = 'test-state';
 
-    const underTest = createSaveActionFunction({
-            getActionBySequenceNumber: (stateId, sequenceNumber) => Promise.resolve(actions[sequenceNumber - 1]),
-            saveAction: (stateId, action) => {
-                actionsSaved.push(action);
-                return Promise.resolve()
-            },
-            getSnapshot: stateId => {
-                return {
-                    sequenceNumber: 3,
-                    state: {actions: []}
-                }
-            },
-            saveSnapshot: (stateId, snapshot) => {
-                snapshotsSaved.push(snapshot);
-                return Promise.resolve()
-            },
-            onNewAction: (cb) => dbEventEmitter.on('new-action', cb)
-        }, (a1, a2) => [{type: `(${a1.type}-${a2.type})`}, {type: `(${a1.type}x${a2.type})`}],
-        (state, action) => {
-            {
-                return {
-                    actions: state.actions.concat(action)
-                }
+    const db = {
+        getActionBySequenceNumber: (stateId, sequenceNumber) => Promise.resolve(actions[sequenceNumber - 1]),
+        saveAction: (stateId, action) => {
+            actionsSaved.push(action);
+            return Promise.resolve()
+        },
+        getSnapshot: () => {
+            return {
+                sequenceNumber: 3,
+                state: {actions: []}
             }
-        });
+        },
+        saveSnapshot: (stateId, snapshot) => {
+            snapshotsSaved.push(snapshot);
+            return Promise.resolve()
+        },
+        onNewAction: (cb) => dbEventEmitter.on('new-action', cb)
+    };
+    const mergeActions = (a1, a2) => [{type: `(${a1.type}-${a2.type})`}, {type: `(${a1.type}x${a2.type})`}];
+    const reducer = (state, action) => { return {actions: state.actions.concat(action.type)} };
+    const isActionValid = (state, action) => action.type !== 'invalid-action';
+    const underTest = createSaveActionFunction({ db, mergeActions, reducer, isActionValid });
 
     beforeEach(() => {
         actionsSaved = [];
@@ -44,61 +41,70 @@ describe('saveAction', () => {
     });
 
     it('should reject actions with parent not saved on the server', async function () {
-        const actionToSave = {
-            sequenceNumber: 5,
-            action: {type: 'action4'},
-            clientId: clientId
-        };
+        const actionToSave = {type: 'action4'};
         try {
-            await underTest(stateId, actionToSave);
+            await underTest(stateId, clientId, 5, actionToSave);
             should.fail('no error was thrown when it should have been');
         } catch (err) {
             // expected
         }
 
         actionsSaved.should.be.empty();
+        snapshotsSaved.should.be.empty();
     });
 
+    it('should reject actions which are not valid', async function () {
+        const actionToSave = {type: 'invalid-action'};
+        try {
+            await underTest(stateId, clientId, 3, actionToSave);
+            should.fail('no error was thrown when it should have been');
+        } catch (err) {
+            // expected
+        }
+
+        actionsSaved.should.be.empty();
+        snapshotsSaved.should.be.empty();
+    });
+
+
     it('should save actions where the parent is the last saved action', async function () {
-        const actionToSave = {
-            sequenceNumber: 4,
-            action: {type: 'action4'},
-            clientId: clientId
-        };
-        await underTest(stateId, actionToSave);
+        const actionToSave = {type: 'action4'};
+        await underTest(stateId, clientId, 4, actionToSave);
 
         actionsSaved.should.have.length(1);
-        actionsSaved[0].should.eql(actionToSave);
+        actionsSaved[0].should.eql({
+            action: actionToSave,
+            clientId: clientId,
+            sequenceNumber: 4
+        });
 
         snapshotsSaved.should.have.length(1);
         snapshotsSaved[0].should.eql({
             sequenceNumber: 4,
             state: {
-                actions: [{type: '@@redux/INIT'}, {type: 'action4'}]
+                actions: ['@@redux/INIT', 'action4']
             }
         });
     });
 
     it('should save actions where the parent is not the last saved action', async function () {
-        const actionToSave = {
-            sequenceNumber: 2,
-            action: {type: 'action4'},
-            clientId: clientId
-        };
-        await underTest(stateId, actionToSave);
+        const actionToSave = {type: 'action4'};
+        await underTest(stateId, clientId, 2, actionToSave);
 
         actionsSaved.should.have.length(1);
         actionsSaved[0].should.eql({
-            sequenceNumber: 4,
-            action: {type: '((action4xaction2)xaction3)'},
-            clientId: clientId
+            action: {
+                type: '((action4xaction2)xaction3)'
+            },
+            clientId: clientId,
+            sequenceNumber: 4
         });
 
         snapshotsSaved.should.have.length(1);
         snapshotsSaved[0].should.eql({
             sequenceNumber: 4,
             state: {
-                actions: [{type: '@@redux/INIT'}, {type: '((action4xaction2)xaction3)'}]
+                actions: ['@@redux/INIT', '((action4xaction2)xaction3)']
             }
         })
     });

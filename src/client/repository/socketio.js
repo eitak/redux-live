@@ -11,8 +11,9 @@ class SocketIo {
         });
     }
 
-    saveAction(action) {
-        this.socket.emit(SocketIoEvents.SAVE_ACTION, action);
+    saveAction(saveActionRequest) {
+        this.socket.emit(SocketIoEvents.SAVE_ACTION, saveActionRequest);
+        return Promise.resolve();
     }
 
     async getClientId() {

@@ -4,10 +4,11 @@ const NEW_ACTION_EVENT = 'new-action';
 
 class LocalDb {
 
-    constructor() {
+    constructor(initialState) {
         this._eventEmitter = new EventEmitter();
         this._actions = {};
         this._snapshots = {};
+        this.initialState = initialState;
     }
 
     deleteState(stateId) {
@@ -20,14 +21,20 @@ class LocalDb {
         if (!snapshot) {
             return Promise.resolve({
                 sequenceNumber: 0,
-                state: {amount: 0}
+                state: this.initialState
             })
         }
 
-        return Promise.resolve({
-            sequenceNumber: this._actions[stateId].length,
-            state: snapshot
-        });
+        return Promise.resolve(snapshot);
+    }
+
+    async clearOldActions(stateId, recordsToKeep=10) {
+        const snapshot = await this.getSnapshot(stateId);
+        let sequenceNumber = snapshot.sequenceNumber - recordsToKeep + 1; // keep last 10 actions
+        while (this._actions[stateId] && this._actions[stateId][sequenceNumber]) {
+            delete this._actions[stateId][sequenceNumber];
+            sequenceNumber = sequenceNumber - 1;
+        }
     }
 
     async saveSnapshot(stateId, snapshot) {
@@ -40,31 +47,27 @@ class LocalDb {
         this._snapshots[stateId] = snapshot;
     }
 
-    getActionBySequenceNumber(stateId, sequenceNumber) {
+    async getActionBySequenceNumber(stateId, sequenceNumber) {
         const actionsForState = this._actions[stateId];
         if (!actionsForState) {
-            return Promise.reject();
+            throw new Error(`Could not find action with sequence number ${sequenceNumber} and stateId ${stateId}`);
         }
 
-        if (actionsForState.length < sequenceNumber) {
-            return Promise.reject();
+        const snapshot = await this.getSnapshot(stateId);
+        if (snapshot.sequenceNumber < sequenceNumber) {
+            throw new Error(`Could not find action with sequence number ${sequenceNumber} and stateId ${stateId}`);
         }
 
-        return Promise.resolve(actionsForState[sequenceNumber - 1]);
+        return actionsForState[sequenceNumber];
     }
 
-    saveAction(stateId, action) {
+    saveAction(stateId, actionRecord) {
         if (!this._actions[stateId]) {
-            this._actions[stateId] = [];
-            this._snapshots[stateId] = {amount: 0};
+            this._actions[stateId] = {};
         }
 
-        this._actions[stateId].push(action);
-        var newAmount = this._snapshots[stateId].amount + action.action.amount;
-        this._snapshots[stateId] = {
-           amount: newAmount
-        };
-        this._eventEmitter.emit(NEW_ACTION_EVENT, stateId, action);
+        this._actions[stateId][actionRecord.sequenceNumber] = actionRecord;
+        this._eventEmitter.emit(NEW_ACTION_EVENT, stateId, actionRecord);
         return Promise.resolve();
     }
 

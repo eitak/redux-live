@@ -1,21 +1,30 @@
 import ClientActionManager from './client-action-manager'
 import { EventEmitter } from 'events'
+import createStore from './store/redux'
 
-async function initializeClient(repository, createStore, mergeActions) {
+const NEW_ACTION_EVENT = 'new-action';
 
+async function initializeClient({ repository, reducer, additionalEnhancer, mergeActions, isActionValid=() => true}) {
     const initialState = await repository.getInitialState();
     const clientId = await repository.getClientId();
     const sequenceNumber = await repository.getSequenceNumber();
 
     const newClientActionEventEmitter = new EventEmitter();
-    const store = createStore(initialState, (action) => newClientActionEventEmitter.emit('new-action', action));
+    const saveAction = (action) => newClientActionEventEmitter.emit(NEW_ACTION_EVENT, action);
+    const store = createStore({
+        reducer,
+        additionalEnhancer,
+        initialState,
+        saveAction,
+        clientId,
+        isActionValid
+    });
 
     const actionManager = new ClientActionManager(repository.saveAction.bind(repository),
         store.dispatch.bind(store), mergeActions, sequenceNumber, clientId);
 
     repository.onNewActionFromServer(actionManager.applyServerAction.bind(actionManager));
-    console.log(actionManager);
-    newClientActionEventEmitter.on('new-action', actionManager.applyClientAction.bind(actionManager));
+    newClientActionEventEmitter.on(NEW_ACTION_EVENT, actionManager.applyClientAction.bind(actionManager));
 
     return store;
 }
