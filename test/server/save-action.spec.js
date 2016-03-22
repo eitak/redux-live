@@ -43,7 +43,7 @@ describe('saveAction', () => {
     it('should reject actions with parent not saved on the server', async function () {
         const actionToSave = {type: 'action4'};
         try {
-            await underTest(stateId, clientId, 5, actionToSave);
+            await underTest({ stateId, clientId, sequenceNumber: 5, action: actionToSave});
             should.fail('no error was thrown when it should have been');
         } catch (err) {
             // expected
@@ -56,7 +56,7 @@ describe('saveAction', () => {
     it('should reject actions which are not valid', async function () {
         const actionToSave = {type: 'invalid-action'};
         try {
-            await underTest(stateId, clientId, 3, actionToSave);
+            await underTest({ stateId, clientId, sequenceNumber: 3, action: actionToSave});
             should.fail('no error was thrown when it should have been');
         } catch (err) {
             // expected
@@ -69,7 +69,7 @@ describe('saveAction', () => {
 
     it('should save actions where the parent is the last saved action', async function () {
         const actionToSave = {type: 'action4'};
-        await underTest(stateId, clientId, 4, actionToSave);
+        await underTest({ stateId, clientId, sequenceNumber: 4, action: actionToSave});
 
         actionsSaved.should.have.length(1);
         actionsSaved[0].should.eql({
@@ -89,7 +89,7 @@ describe('saveAction', () => {
 
     it('should save actions where the parent is not the last saved action', async function () {
         const actionToSave = {type: 'action4'};
-        await underTest(stateId, clientId, 2, actionToSave);
+        await underTest({stateId, clientId, sequenceNumber: 2, action: actionToSave});
 
         actionsSaved.should.have.length(1);
         actionsSaved[0].should.eql({

@@ -1,4 +1,3 @@
-import { EventEmitter } from 'events'
 import ClientActionManager from '../../src/client/client-action-manager'
 
 require("babel-polyfill");

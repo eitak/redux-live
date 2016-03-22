@@ -7,7 +7,7 @@ const SAVE_ACTION_EVENT = 'save-action';
 
 class SocketIoClient {
 
-    constructor(db, opts) {
+    constructor(opts) {
         if (opts.server) {
             this.io = socketio(opts.server);
         } else if (opts.socketio) {
@@ -17,34 +17,30 @@ class SocketIoClient {
         }
 
         this._eventEmitter = new EventEmitter();
+    }
 
+    onNewClient(cb) {
         this.io.on('connection', socket => {
-            socket.on(SocketIoEvents.INIT, async (stateId, cb) => {
+            socket.on(SocketIoEvents.INIT, (stateId, sendInitialData) => {
                 const clientId = uuid.v4();
-                const snapshot = await db.getSnapshot(stateId);
-                cb({sequenceNumber: snapshot.sequenceNumber, clientId: clientId, state: snapshot.state});
+                cb({stateId, clientId, sendInitialData});
 
                 socket.on(SocketIoEvents.SAVE_ACTION, (request) => {
-                    console.log('Received save action request from client %s for stateId: %s; action: %j',
-                        clientId, stateId, request);
-
                     const requestWithClientId = Object.assign({}, request, {clientId: clientId});
                     this._eventEmitter.emit(SAVE_ACTION_EVENT, stateId, requestWithClientId)
                 });
 
             });
         });
-
     }
 
     emitAction(stateId, actionSavedEvent) {
-        console.log('Emitting action saved event for state %s: %j', stateId, actionSavedEvent);
         this.io.emit(stateId, actionSavedEvent);
     }
 
     onSaveActionRequest(cb) {
         this._eventEmitter.on(SAVE_ACTION_EVENT, (stateId, request) => {
-            cb(stateId, request.clientId, request.sequenceNumber, request.action);
+            cb({...request, stateId});
         })
     }
 

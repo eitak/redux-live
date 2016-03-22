@@ -3,7 +3,7 @@ import { createStore } from 'redux'
 
 function createSaveActionFunction ({ db, mergeActions, reducer, isActionValid=() => true }) {
 
-    return async function saveAction(stateId, clientId, sequenceNumber, action) {
+    return async function saveAction({stateId, clientId, sequenceNumber, action}) {
         delete action._originatedFromServer;
 
         const previousSnapshot = await db.getSnapshot(stateId);
@@ -37,8 +37,6 @@ function createSaveActionFunction ({ db, mergeActions, reducer, isActionValid=()
             sequenceNumber: nextSequenceNumber,
             action: actionToSave
         };
-
-        console.log('Saving for stateId: %s, record: %j', stateId, recordToSave);
 
         await db.saveAction(stateId, recordToSave);
 
