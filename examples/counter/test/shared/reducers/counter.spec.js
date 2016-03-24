@@ -1,5 +1,5 @@
 import expect from 'expect'
-import counter from '../../src/shared/reducers'
+import counter from '../../../src/shared/reducers'
 
 describe('reducers', () => {
   describe('counter', () => {

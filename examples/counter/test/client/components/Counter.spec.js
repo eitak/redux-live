@@ -1,7 +1,7 @@
 import expect from 'expect'
 import React from 'react'
 import { shallow } from 'enzyme'
-import Counter from '../../src/client/components/Counter'
+import Counter from '../../../src/client/components/Counter'
 
 function setup(value = 0) {
   const actions = {

@@ -1,6 +1,6 @@
 import express from 'express'
-import exphbs from 'express-handlebars'
 import http from 'http'
+import path from 'path'
 
 import LocalDb from 'redux-live/lib/server/db/local-db'
 import SocketIoClient from 'redux-live/lib/server/client/socketio'
@@ -32,17 +32,10 @@ app.use((err, req, res, next) => {
 });
 
 /**
- * Views
- */
-app.set('views', __dirname + '/../../views');
-app.engine('handlebars', exphbs());
-app.set('view engine', 'handlebars');
-
-/**
  * Routes
  */
 app.get('/', (req, res) => {
-    res.render('index');
+    res.sendFile(path.resolve('views/index.html'))
 });
 
 /**
