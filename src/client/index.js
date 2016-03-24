@@ -1,10 +1,12 @@
 import ClientActionManager from './client-action-manager'
 import { EventEmitter } from 'events'
 import createStore from './store/redux'
+import {clientDefaults} from '../shared/defaults'
 
 const NEW_ACTION_EVENT = 'new-action';
 
-async function initializeClient({ repository, reducer, additionalEnhancer, mergeActions, isActionValid=() => true}) {
+async function initializeClient(opts) {
+    const { repository, reducer, additionalEnhancer, mergeActions, isActionValid} = {...clientDefaults, ...opts};
     const initialState = await repository.getInitialState();
     const clientId = await repository.getClientId();
     const sequenceNumber = await repository.getSequenceNumber();

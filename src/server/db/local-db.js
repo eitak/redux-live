@@ -16,13 +16,26 @@ class LocalDb {
         delete this._snapshots[stateId];
     }
 
+    createState(stateId) {
+        const existingSnapshot = this._snapshots[stateId];
+        if (existingSnapshot) {
+            Promise.reject(`State already exists for state ID ${stateId}`);
+            return;
+        }
+
+        this._actions[stateId] = {};
+        this._snapshots[stateId] = {
+            sequenceNumber: 0,
+            state: this.initialState
+        };
+
+        return Promise.resolve()
+    }
+
     getSnapshot(stateId) {
         const snapshot = this._snapshots[stateId];
         if (!snapshot) {
-            return Promise.resolve({
-                sequenceNumber: 0,
-                state: this.initialState
-            })
+            return Promise.reject(`No state for state ID ${stateId}`);
         }
 
         return Promise.resolve(snapshot);
@@ -63,7 +76,7 @@ class LocalDb {
 
     saveAction(stateId, actionRecord) {
         if (!this._actions[stateId]) {
-            this._actions[stateId] = {};
+            Promise.reject(`No state found for state ID ${stateId}`);
         }
 
         this._actions[stateId][actionRecord.sequenceNumber] = actionRecord;

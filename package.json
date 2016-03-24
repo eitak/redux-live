@@ -17,6 +17,9 @@
     "type": "git",
     "url": "git+ssh://git@github.com/eitak/redux-live.git"
   },
+  "keywords": [
+    "redux"
+  ],
   "bugs": {
     "url": "https://github.com/eitak/redux-live/issues"
   },
