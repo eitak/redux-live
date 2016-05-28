@@ -1,12 +1,12 @@
 import socketio from 'socket.io'
-import { EventEmitter } from 'events'
+import {EventEmitter} from 'events'
 
 import {SAVE_ACTION, SUBSCRIBE_TO_STREAM, UNSUBSCRIBE_TO_STREAM, NEW_ACTION} from '../../shared/constants/SocketIoEvents'
 import {defaultGetSocketIoRoom} from '../../shared/Defaults'
 
 class SocketIoClientCommunicator {
 
-    constructor(socketIoOpts, getSocketIoRoom=defaultGetSocketIoRoom) {
+    constructor(socketIoOpts, getSocketIoRoom = defaultGetSocketIoRoom) {
         this.io = socketio(socketIoOpts);
         this._eventEmitter = new EventEmitter();
         this._getSocketIoRoom = getSocketIoRoom;
@@ -45,6 +45,7 @@ class SocketIoClientCommunicator {
 
 
     sendActionToClient(clientId, action) {
+        console.log('Sending action to client %s : %j', clientId, action);
         this.io.sockets.in(`/#${clientId}`).emit(NEW_ACTION, action);
     }
 
@@ -57,6 +58,7 @@ class SocketIoClientCommunicator {
     }
 
     sendAction(action) {
+        console.log('Sending action : %j', action);
         this.io.sockets.in(this._getSocketIoRoom(action.reduxLive.streamId)).emit(NEW_ACTION, action);
     }
 

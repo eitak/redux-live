@@ -1,4 +1,5 @@
-import { EventEmitter } from 'events'
+import {EventEmitter} from 'events'
+import _ from 'lodash'
 
 const NEW_ACTION_EVENT = 'new-action';
 
@@ -11,19 +12,22 @@ class LocalDb {
     }
 
     deleteStream(streamId) {
-        delete this._actions[streamId];
-        delete this._snapshots[streamId];
+        const streamIdKey = JSON.stringify(streamId);
+        delete this._actions[streamIdKey];
+        delete this._snapshots[streamIdKey];
     }
 
     createStream(streamId, initialState={}) {
-        const existingSnapshot = this._snapshots[streamId];
+        const streamIdKey = JSON.stringify(streamId);
+
+        const existingSnapshot = this._snapshots[streamIdKey];
         if (existingSnapshot) {
             Promise.reject(`State already exists for state ID ${streamId}`);
             return;
         }
 
-        this._actions[streamId] = {};
-        this._snapshots[streamId] = {
+        this._actions[streamIdKey] = {};
+        this._snapshots[streamIdKey] = {
             ...initialState,
             reduxLive: {
                 sequenceNumber: 0,
@@ -35,7 +39,8 @@ class LocalDb {
     }
 
     getSnapshot(streamId) {
-        const snapshot = this._snapshots[streamId];
+        const streamIdKey = JSON.stringify(streamId);
+        const snapshot = this._snapshots[streamIdKey];
         if (!snapshot) {
             return Promise.reject(`No state for stream ID ${streamId}`);
         }
@@ -46,8 +51,10 @@ class LocalDb {
     async clearOldActions(streamId, recordsToKeep=10) {
         const snapshot = await this.getSnapshot(streamId);
         let sequenceNumber = snapshot.reduxLive.sequenceNumber - recordsToKeep + 1; // keep last 10 actions
-        while (this._actions[streamId] && this._actions[streamId][sequenceNumber]) {
-            delete this._actions[streamId][sequenceNumber];
+
+        const streamIdKey = JSON.stringify(streamId);
+        while (this._actions[streamIdKey] && this._actions[streamIdKey][sequenceNumber]) {
+            delete this._actions[streamIdKey][sequenceNumber];
             sequenceNumber = sequenceNumber - 1;
         }
     }
@@ -60,11 +67,14 @@ class LocalDb {
                 ' %j', snapshot);
             return;
         }
-        this._snapshots[streamId] = snapshot;
+
+        const streamIdKey = JSON.stringify(streamId);
+        this._snapshots[streamIdKey] = snapshot;
     }
 
     async getAction(streamId, sequenceNumber) {
-        const actionsForState = this._actions[streamId];
+        const streamIdKey = JSON.stringify(streamId);
+        const actionsForState = this._actions[streamIdKey];
         if (!actionsForState) {
             throw new Error(`Could not find action with sequence number ${sequenceNumber} and stream ID ${streamId}`);
         }
@@ -79,21 +89,26 @@ class LocalDb {
 
     saveAction(action) {
         const streamId = action.reduxLive.streamId;
-        if (!this._actions[streamId]) {
+        const streamIdKey = JSON.stringify(streamId);
+        if (!this._actions[streamIdKey]) {
             Promise.reject(`No state found for stream ID ${streamId}`);
         }
 
-        if (this._actions[streamId].length !== action.reduxLive.sequenceNumber) {
+        if (this._actions[streamIdKey].length !== action.reduxLive.sequenceNumber) {
             Promise.reject(`Invalid sequence number for stream ID ${streamId}`);
         }
 
-        this._actions[streamId][action.reduxLive.sequenceNumber] = action;
+        this._actions[streamIdKey][action.reduxLive.sequenceNumber] = action;
         this._eventEmitter.emit(NEW_ACTION_EVENT, action);
         return Promise.resolve();
     }
 
-    onNewAction(cb) {
-        this._eventEmitter.on(NEW_ACTION_EVENT, cb)
+    onNewAction(streamId, cb) {
+        this._eventEmitter.on(NEW_ACTION_EVENT, action => {
+            if (_.isEqual(streamId, action.reduxLive.streamId)) {
+                cb(action)
+            }
+        })
     }
 
 }

@@ -1,4 +1,4 @@
-import { createStore } from 'redux'
+import {createStore} from 'redux'
 import _ from 'lodash'
 
 import {defaultMergeActions} from '../shared/Defaults'
@@ -21,6 +21,10 @@ class ReduxLiveServer {
         });
 
         this.clientCommunicator.onNewClient(async (clientId, streamId) => {
+            this.db.onNewAction(streamId, action => {
+                this.clientCommunicator.sendAction(action)
+            });
+
             const currentSnapshot = await this.db.getSnapshot(streamId);
             const action = {
                 type: SET_STREAM_INITIAL_STATE,
@@ -30,14 +34,9 @@ class ReduxLiveServer {
                     sequenceNumber: currentSnapshot.reduxLive.sequenceNumber
                 }
             };
-            console.log('Sending action %j to client %s', action, clientId);
+
             this.clientCommunicator.sendActionToClient(clientId, action)
         });
-
-        this.db.onNewAction(action => {
-            console.log('Sending action %j to clients', action);
-            this.clientCommunicator.sendAction(action)
-        })
     }
 
     async saveAction(action) {

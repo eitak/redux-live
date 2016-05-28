@@ -67,7 +67,8 @@ describe('ReduxLiveServer', () => {
 
             // when
             underTest.start();
-            db.saveAction(action);
+            await registerNewClient('test-client', 'test-stream');
+            await db.saveAction(action);
 
             // then
             actionsSentToClients.should.eql([action])
