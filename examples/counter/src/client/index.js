@@ -1,29 +1,49 @@
 import React from 'react'
 import { render } from 'react-dom'
-
-import initializeClient from 'redux-live/lib/client/index'
-import SocketIo from 'redux-live/lib/client/repository/socketio'
-import createStore from 'redux-live/lib/client/store/redux'
+import {createStore, applyMiddleware, combineReducers} from 'redux'
+import SocketIoServerCommunicator from 'redux-live/lib/client/server-communicator/SocketIoServerCommunicator'
+import client from 'redux-live/lib/client'
+import {createReduxLiveMiddleware, reduxLiveReducer} from 'redux-live/lib/client'
 
 import Counter from './components/Counter'
-import sharedOptions from '../shared/redux-live-options'
+import counter from '../shared/reducers/index'
 
-const socketio = new SocketIo('count');
+import SocketIoEvents from '../shared/socket-io-events'
 
-initializeClient({...sharedOptions, repository: socketio})
-    .then((store) => {
-        console.log(store.getState());
-        function renderCounter() {
-            render(
-                <Counter
-                    value={store.getState().value}
-                    onIncrement={() => store.dispatch({ type: 'INCREMENT' })}
-                    onDecrement={() => store.dispatch({ type: 'DECREMENT' })}
-                />,
-                document.getElementById('root')
-            );
-        }
+const serverCommunicator = new SocketIoServerCommunicator();
+const reduxLiveMiddleware = createReduxLiveMiddleware(serverCommunicator);
 
-        renderCounter();
-        store.subscribe(renderCounter)
-    });
+require("babel-polyfill");
+
+const initialState = {
+    counter: {value: 0},
+    reduxLive: {
+        streams: [{
+            streamId: 'counter'
+        }]
+    }
+};
+
+function logger({ getState }) {
+    return (next) => (action) => {
+        console.log('Will dispatch', action);
+        let returnValue = next(action);
+        console.log('State after dispatch', getState());
+        return returnValue
+    }
+}
+
+const store = createStore(combineReducers({counter, reduxLive: reduxLiveReducer}), initialState, applyMiddleware(reduxLiveMiddleware, logger));
+function renderCounter() {
+    render(
+        <Counter
+            value={store.getState().counter.value}
+            onIncrement={() => store.dispatch({ type: 'INCREMENT', reduxLive: {streamId: 'counter'} })}
+            onDecrement={() => store.dispatch({ type: 'DECREMENT', reduxLive: {streamId: 'counter'} })}
+        />,
+        document.getElementById('root')
+    );
+}
+
+renderCounter();
+store.subscribe(renderCounter);

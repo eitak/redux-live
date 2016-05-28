@@ -1,12 +1,14 @@
 import express from 'express'
 import http from 'http'
 import path from 'path'
+import socketIo from 'socket.io'
+import {createStore, applyMiddleware} from 'redux'
 
-import LocalDb from 'redux-live/lib/server/db/local-db'
-import SocketIoClient from 'redux-live/lib/server/client/socketio'
-import initializeServer from 'redux-live/lib/server/index'
+import LocalDb from 'redux-live/lib/server/db/LocalDb'
+import SocketIoClientCommunicator from 'redux-live/lib/server/client-communicator/SocketIoClientCommunicator'
+import ReduxLiveServer from 'redux-live/lib/server'
 
-import reduxLiveOptions from '../shared/redux-live-options'
+import counter from '../shared/reducers/index'
 
 require("babel-polyfill");
 
@@ -41,13 +43,11 @@ app.get('/', (req, res) => {
 /**
  * Redux Live initialisation
  */
-const client = new SocketIoClient({server: server});
-async function startServer() {
-    const {db} = await initializeServer({...reduxLiveOptions, dbClass: LocalDb, client});
-    db.createState('count');
-}
+const db = new LocalDb();
+db.createStream('counter', {value: 0});
+const clientCommunicator = new SocketIoClientCommunicator(server);
 
-startServer();
+const reduxLiveServer = new ReduxLiveServer({reducer: counter, db, clientCommunicator});
 
 /**
  * Start app
@@ -55,4 +55,5 @@ startServer();
 const port = process.env.PORT || '3000';
 server.listen(port, () => {
     console.log(`counter app listening on port ${port}`);
+    reduxLiveServer.start();
 });

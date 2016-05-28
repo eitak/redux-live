@@ -1,8 +1,9 @@
 const SocketIoEvents = {
+    SUBSCRIBE_TO_STREAM: 'subscribe',
+
     SAVE_ACTION: 'save-action',
     NEW_ACTION: 'new-action',
-    INIT: 'init',
-    GET_STATE: 'get-state'
+    INITIAL_STATE: 'initial-state'
 };
 
 export default SocketIoEvents;

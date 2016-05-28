@@ -1,12 +1,6 @@
-import LocalDb from '../server/db/local-db'
+export const defaultMergeActions = (action1, action2) => [action2, action1];
+export const defaultGetSocketIoRoom = streamId => streamId;
 
-const sharedDefaults = {
-    mergeActions: (action1, action2) => [action2, action1],
-    isActionValid: () => true
+export default {
+    mergeActions: defaultMergeActions
 };
-
-export const serverDefaults = {...sharedDefaults,
-    dbClass: LocalDb
-};
-
-export const clientDefaults = {...sharedDefaults};
