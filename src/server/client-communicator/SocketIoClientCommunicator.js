@@ -15,11 +15,13 @@ class SocketIoClientCommunicator {
             const clientId = socket.client.id;
             console.log('Connected client: %s', clientId);
 
+            this._eventEmitter.emit('NEW_CLIENT', clientId);
+
             socket.on(SUBSCRIBE_TO_STREAM, streamId => {
                 console.log('Client %s subscribed to stream %j', clientId, streamId);
                 const room = getSocketIoRoom(streamId);
                 socket.join(room);
-                this._eventEmitter.emit('NEW_CLIENT', clientId, streamId)
+                this._eventEmitter.emit('NEW_SUBSCRIPTION', clientId, streamId)
             });
 
             socket.on(UNSUBSCRIBE_TO_STREAM, streamId => {
@@ -43,10 +45,13 @@ class SocketIoClientCommunicator {
         });
     }
 
-
     sendActionToClient(clientId, action) {
         console.log('Sending action to client %s : %j', clientId, action);
         this.io.sockets.in(`/#${clientId}`).emit(NEW_ACTION, action);
+    }
+
+    onNewSubscription(cb) {
+        this._eventEmitter.on('NEW_SUBSCRIPTION', cb)
     }
 
     onNewClient(cb) {

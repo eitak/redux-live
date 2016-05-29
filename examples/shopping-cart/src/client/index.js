@@ -15,24 +15,43 @@ require("babel-polyfill");
 const serverCommunicator = new SocketIoServerCommunicator();
 const reduxLiveMiddleware = createReduxLiveMiddleware(serverCommunicator);
 
-const initialState = {
-    cart: {
-        id: 1,
-        addedProducts: {}
-    },
-    reduxLive: {
-        streams: [{
-            streamId: {
-                topic: 'carts',
-                id: 1
-            }
-        }, {
-            streamId: {
-                topic: 'all-products'
-            }
-        }]
+serverCommunicator.onConnect(() => {
+    const cartId = serverCommunicator.socket.id;
+    const initialState = {
+        cart: {
+            id: cartId,
+            addedProducts: {}
+        },
+        reduxLive: {
+            streams: [{
+                streamId: {
+                    topic: 'carts',
+                    id: cartId
+                }
+            }, {
+                streamId: {
+                    topic: 'all-products'
+                }
+            }]
+        }
+    };
+
+    const reducer = combineReducers({cart, products, reduxLive: reduxLiveReducer});
+    const middleware = applyMiddleware(reduxLiveMiddleware, subscribeProductsMiddleware, logger);
+    const store = createStore(reducer, initialState, middleware);
+    function renderApp() {
+        render(
+            <Provider store={store}>
+                <App />
+            </Provider>,
+            document.getElementById('root')
+        );
     }
-};
+
+    renderApp();
+    store.subscribe(renderApp);
+});
+
 
 function logger({getState}) {
     return (next) => (action) => {
@@ -42,18 +61,3 @@ function logger({getState}) {
         return returnValue
     }
 }
-
-const reducer = combineReducers({cart, products, reduxLive: reduxLiveReducer});
-const middleware = applyMiddleware(reduxLiveMiddleware, subscribeProductsMiddleware, logger);
-const store = createStore(reducer, initialState, middleware);
-function renderApp() {
-    render(
-        <Provider store={store}>
-            <App />
-        </Provider>,
-        document.getElementById('root')
-    );
-}
-
-renderApp();
-store.subscribe(renderApp);

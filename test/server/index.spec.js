@@ -8,7 +8,7 @@ require('should');
 
 describe('ReduxLiveServer', () => {
 
-    let underTest, db, actionsSentToClients, sendActionFromClient, registerNewClient, actionsSentToSpecificClients;
+    let underTest, db, actionsSentToClients, sendActionFromClient, registerNewSubscription, registerNewClient, actionsSentToSpecificClients;
 
     beforeEach(() => {
         db = new LocalDb();
@@ -35,6 +35,7 @@ describe('ReduxLiveServer', () => {
                     actionsSentToSpecificClients[clientId].push(action)
                 },
                 onNewAction: cb => sendActionFromClient = cb,
+                onNewSubscription: cb => registerNewSubscription = cb,
                 onNewClient: cb => registerNewClient = cb
             }
         });
@@ -67,7 +68,7 @@ describe('ReduxLiveServer', () => {
 
             // when
             underTest.start();
-            await registerNewClient('test-client', 'test-stream');
+            await registerNewSubscription('test-client', 'test-stream');
             await db.saveAction(action);
 
             // then
@@ -77,7 +78,7 @@ describe('ReduxLiveServer', () => {
         it('should send initial state to new clients after starting', async () => {
             // when
             underTest.start();
-            await registerNewClient('test-client', 'test-stream');
+            await registerNewSubscription('test-client', 'test-stream');
 
             // then
             actionsSentToSpecificClients['test-client'].should.eql([{

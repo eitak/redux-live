@@ -20,11 +20,11 @@ class ReduxLiveServer {
             await this.saveAction(action)
         });
 
-        this.clientCommunicator.onNewClient(async (clientId, streamId) => {
-            this.db.onNewAction(streamId, action => {
-                this.clientCommunicator.sendAction(action)
-            });
+        this.db.onNewAction(action => {
+            this.clientCommunicator.sendAction(action)
+        });
 
+        this.clientCommunicator.onNewSubscription(async (clientId, streamId) => {
             const currentSnapshot = await this.db.getSnapshot(streamId);
             const action = {
                 type: SET_STREAM_INITIAL_STATE,

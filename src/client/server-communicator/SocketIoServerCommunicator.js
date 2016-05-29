@@ -8,6 +8,10 @@ class SocketIoServerCommunicator {
 
     constructor(namespace) {
         this.socket = io(namespace);
+        this.socket.on('connect', () => {
+            this._newActionEventEmitter.emit('CONNECT')
+        });
+
         this._newActionEventEmitter = new EventEmitter();
 
         this.socket.on(NEW_ACTION, action => {
@@ -29,6 +33,10 @@ class SocketIoServerCommunicator {
 
     saveActionOnServer(action) {
         this.socket.emit(SAVE_ACTION, action)
+    }
+
+    onConnect(cb) {
+        this._newActionEventEmitter.on('CONNECT', cb)
     }
 
     onNewActionFromServer(cb) {
