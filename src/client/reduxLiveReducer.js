@@ -1,7 +1,6 @@
 import _ from 'lodash'
 
-import {CONFIRM_ACTION, UNSUBSCRIBE_TO_STREAM} from './constants/ActionTypes'
-import {SET_STREAM_INITIAL_STATE} from '../shared/constants/ActionTypes'
+import {SET_STREAM_INITIAL_STATE, CONFIRM_ACTION, UNSUBSCRIBE_TO_STREAM} from '../shared/constants/ActionTypes'
 
 function reduxLiveReducer(state = {streams: []}, action) {
     switch (action.type) {

@@ -15,42 +15,30 @@ require("babel-polyfill");
 const serverCommunicator = new SocketIoServerCommunicator();
 const reduxLiveMiddleware = createReduxLiveMiddleware(serverCommunicator);
 
-serverCommunicator.onConnect(() => {
-    const cartId = serverCommunicator.socket.id;
-    const initialState = {
-        cart: {
-            id: cartId,
-            addedProducts: {}
-        },
-        reduxLive: {
-            streams: [{
-                streamId: {
-                    topic: 'carts',
-                    id: cartId
-                }
-            }, {
-                streamId: {
-                    topic: 'all-products'
-                }
-            }]
-        }
-    };
-
-    const reducer = combineReducers({cart, products, reduxLive: reduxLiveReducer});
-    const middleware = applyMiddleware(reduxLiveMiddleware, subscribeProductsMiddleware, logger);
-    const store = createStore(reducer, initialState, middleware);
-    function renderApp() {
-        render(
-            <Provider store={store}>
-                <App />
-            </Provider>,
-            document.getElementById('root')
-        );
+const initialState = {
+    reduxLive: {
+        streams: [{
+            streamId: {
+                topic: 'all-products'
+            }
+        }]
     }
+};
 
-    renderApp();
-    store.subscribe(renderApp);
-});
+const reducer = combineReducers({cart, products, reduxLive: reduxLiveReducer});
+const middleware = applyMiddleware(reduxLiveMiddleware, subscribeProductsMiddleware, logger);
+const store = createStore(reducer, initialState, middleware);
+function renderApp() {
+    render(
+        <Provider store={store}>
+            <App />
+        </Provider>,
+        document.getElementById('root')
+    );
+}
+
+renderApp();
+store.subscribe(renderApp);
 
 
 function logger({getState}) {

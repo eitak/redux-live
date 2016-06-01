@@ -1,7 +1,6 @@
 import express from 'express'
 import http from 'http'
 import path from 'path'
-import socketIo from 'socket.io'
 import {createStore, applyMiddleware} from 'redux'
 
 import LocalDb from 'redux-live/lib/server/db/LocalDb'

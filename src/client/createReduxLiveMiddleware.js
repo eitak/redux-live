@@ -1,19 +1,33 @@
 import _ from 'lodash'
 
-import {CONFIRM_ACTION, UNSUBSCRIBE_TO_STREAM, SUBSCRIBE_TO_STREAM} from './constants/ActionTypes'
-import {SET_STREAM_INITIAL_STATE} from '../shared/constants/ActionTypes'
+import {SET_STREAM_INITIAL_STATE, CONFIRM_ACTION, UNSUBSCRIBE_TO_STREAM, SUBSCRIBE_TO_STREAM} from '../shared/constants/ActionTypes'
 import {defaultMergeActions} from '../shared/Defaults'
 
-function createReduxLiveMiddleware(serverCommunicator, mergeActions=defaultMergeActions) {
+const streamActionTypes = [UNSUBSCRIBE_TO_STREAM, SUBSCRIBE_TO_STREAM, SET_STREAM_INITIAL_STATE];
+
+function createReduxLiveMiddleware(serverCommunicator, mergeActions = defaultMergeActions) {
     return store => {
         for (let stream of store.getState().reduxLive.streams) {
             serverCommunicator.subscribeStream(stream.streamId)
         }
 
+        function handleStreamAction(action) {
+            switch (action.type) {
+                case SUBSCRIBE_TO_STREAM: return serverCommunicator.subscribeStream(action.streamId);
+                case UNSUBSCRIBE_TO_STREAM: return serverCommunicator.unsubscribeStream(action.streamId)
+            }
+        }
+
         return next => {
             serverCommunicator.onNewActionFromServer(action => {
+                if (streamActionTypes.indexOf(action.type) >= 0) {
+                    handleStreamAction(action);
+                    next(action);
+                    return
+                }
+
                 const state = store.getState();
-                const stream = getStream(state, action.reduxLive.streamId);
+                const stream = getStream(state, action.reduxLive);
 
                 const pendingActions = stream.pendingActions || [];
                 const transformedActions = pendingActions
@@ -36,7 +50,7 @@ function createReduxLiveMiddleware(serverCommunicator, mergeActions=defaultMerge
 
             serverCommunicator.onConfirmAction(streamId => {
                 const state = store.getState();
-                const stream = getStream(state, streamId);
+                const stream = getStream(state, {streamId});
                 if (stream) {
                     const shouldSavePendingAction = stream.pendingActions.length > 1;
                     if (shouldSavePendingAction) {
@@ -53,40 +67,21 @@ function createReduxLiveMiddleware(serverCommunicator, mergeActions=defaultMerge
             });
 
             return action => {
-                console.log(action);
-
-                if (action.type === SUBSCRIBE_TO_STREAM) {
-                    serverCommunicator.saveActionOnServer(action);
-                    serverCommunicator.subscribeStream(action.streamId);
-                    return
-                }
-
-                if (action.type === SET_STREAM_INITIAL_STATE) {
-                    next(action);
-                    return
-                }
-
-                if (action.type === UNSUBSCRIBE_TO_STREAM) {
-                    serverCommunicator.unsubscribeStream(action.streamId);
-                    next(action);
-                    return
-                }
-
-                if (!action.reduxLive) {
+                if (streamActionTypes.indexOf(action.type) >= 0) {
+                    handleStreamAction(action);
                     next(action);
                     return
                 }
 
                 const state = store.getState();
 
-                const streamId = action.reduxLive.streamId;
-                const stream = getStream(state, streamId);
+                const stream = getStream(state, action.reduxLive);
                 const shouldSaveAction = stream && stream.pendingActions && stream.pendingActions.length === 0;
                 if (shouldSaveAction) {
                     serverCommunicator.saveActionOnServer({
                         ...action,
                         reduxLive: {
-                            streamId: streamId,
+                            streamId: stream.streamId,
                             sequenceNumber: stream.sequenceNumber + 1
                         }
                     })
@@ -98,9 +93,13 @@ function createReduxLiveMiddleware(serverCommunicator, mergeActions=defaultMerge
     }
 }
 
-function getStream(state, streamId) {
+function getStream(state, reduxLive) {
+    if (!reduxLive) {
+        return false
+    }
+
     const relevantStreams = state.reduxLive.streams.filter(stream => {
-        return _.isEqual(stream.streamId, streamId)
+        return _.isEqual(stream.streamId, reduxLive.streamId)
     });
     if (relevantStreams.length === 1) {
         return relevantStreams[0]

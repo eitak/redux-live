@@ -2,12 +2,13 @@ import express from 'express'
 import http from 'http'
 import path from 'path'
 import _ from 'lodash'
-import socketIo from 'socket.io'
 import {createStore, applyMiddleware} from 'redux'
+import uuid from 'node-uuid'
 
 import LocalDb from 'redux-live/lib/server/db/LocalDb'
 import SocketIoClientCommunicator from 'redux-live/lib/server/client-communicator/SocketIoClientCommunicator'
 import ReduxLiveServer from 'redux-live/lib/server'
+import {SUBSCRIBE_TO_STREAM} from 'redux-live/lib/shared/constants/ActionTypes'
 
 import {cart, product} from '../shared/reducers/index'
 import createCart from './createCart'
@@ -68,7 +69,15 @@ const reduxLiveServer = new ReduxLiveServer({
 });
 
 clientCommunicator.onNewClient(clientId => {
-    createCart(reduxLiveServer, clientId);
+    const cartId = uuid.v4();
+    createCart(reduxLiveServer, cartId);
+    clientCommunicator.sendActionToClient(clientId, {
+        type: SUBSCRIBE_TO_STREAM,
+        streamId: {
+            topic: 'carts',
+            id: cartId
+        }
+    })
 });
 
 /**

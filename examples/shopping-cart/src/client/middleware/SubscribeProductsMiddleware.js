@@ -1,5 +1,4 @@
-import {SET_STREAM_INITIAL_STATE} from 'redux-live/lib/shared/constants/ActionTypes'
-import {SUBSCRIBE_TO_STREAM} from 'redux-live/lib/client/constants/ActionTypes'
+import {SET_STREAM_INITIAL_STATE, SUBSCRIBE_TO_STREAM} from 'redux-live/lib/shared/constants/ActionTypes'
 
 const subscribeProductsMiddleware = store => next => action => {
     const containsProducts = action.type === SET_STREAM_INITIAL_STATE

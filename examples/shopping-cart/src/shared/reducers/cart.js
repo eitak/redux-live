@@ -12,21 +12,27 @@ export default function cart(state = {addedProducts: {}}, action) {
                 return state
             }
         case ADD_TO_CART:
-            const productId = action.productId;
-            const newCount = (state.addedProducts[productId] || {quantity: 0}).quantity + 1;
-            return {
-                ...state,
-                addedProducts: Object.assign({}, state.addedProducts, {[productId]: {quantity: newCount}})
-            };
+            return addToCart(action.productId, state);
         case REMOVE_FROM_CART:
-            const productId = action.productId;
-            const newCount = Math.max((state.addedProducts[productId] || {quantity: 0}).quantity - 1, 0);
-            if (newCount === 0) {
-                return {...state, addedProducts: _.omit(state.addedProducts, productId)}
-            } else {
-                return {...state, addedProducts: Object.assign({}, state.addedProducts, {[productId]: {quantity: newCount}})}
-            }
+            return removeFromCart(action.productId, state);
         default:
             return state
+    }
+}
+
+function addToCart(productId, state) {
+    const newCount = (state.addedProducts[productId] || {quantity: 0}).quantity + 1;
+    return {
+        ...state,
+        addedProducts: Object.assign({}, state.addedProducts, {[productId]: {quantity: newCount}})
+    }
+}
+
+function removeFromCart(productId, state) {
+    const newCount = Math.max((state.addedProducts[productId] || {quantity: 0}).quantity - 1, 0);
+    if (newCount === 0) {
+        return {...state, addedProducts: _.omit(state.addedProducts, productId)}
+    } else {
+        return {...state, addedProducts: Object.assign({}, state.addedProducts, {[productId]: {quantity: newCount}})}
     }
 }

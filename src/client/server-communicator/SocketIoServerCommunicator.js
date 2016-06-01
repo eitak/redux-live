@@ -15,7 +15,7 @@ class SocketIoServerCommunicator {
         this._newActionEventEmitter = new EventEmitter();
 
         this.socket.on(NEW_ACTION, action => {
-            if (action.reduxLive.clientId === this.socket.id) {
+            if (action.reduxLive && action.reduxLive.clientId === this.socket.id) {
                 this._newActionEventEmitter.emit('CONFIRM', action.reduxLive.streamId)
             } else {
                 this._newActionEventEmitter.emit('NEW_ACTION', action)

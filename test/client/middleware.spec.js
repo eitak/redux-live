@@ -1,7 +1,7 @@
 import {createStore, applyMiddleware} from 'redux'
 
 import createReduxLiveMiddleware from '../../src/client/createReduxLiveMiddleware'
-import {CONFIRM_ACTION, UNSUBSCRIBE_TO_STREAM, SUBSCRIBE_TO_STREAM} from '../../src/client/constants/ActionTypes'
+import {CONFIRM_ACTION, UNSUBSCRIBE_TO_STREAM, SUBSCRIBE_TO_STREAM} from '../../src/shared/constants/ActionTypes'
 
 require('should');
 

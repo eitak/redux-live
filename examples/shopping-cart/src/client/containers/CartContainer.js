@@ -26,7 +26,7 @@ CartContainer.propTypes = {
     })).isRequired,
     total: PropTypes.string.isRequired,
     checkout: PropTypes.func.isRequired,
-    cartId: PropTypes.string.isRequired
+    cartId: PropTypes.string
 };
 
 function getProductsInCart(state) {

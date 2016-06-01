@@ -28,7 +28,7 @@ ProductsContainer.propTypes = {
         inventory: PropTypes.number.isRequired
     })).isRequired,
     addToCart: PropTypes.func.isRequired,
-    cartId: PropTypes.string.isRequired
+    cartId: PropTypes.string
 };
 
 function mapStateToProps(state) {
