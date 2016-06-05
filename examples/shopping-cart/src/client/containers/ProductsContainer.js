@@ -1,5 +1,6 @@
 import React, {Component, PropTypes} from 'react'
 import {connect} from 'react-redux'
+
 import {addToCart} from '../actions'
 import ProductItem from '../components/ProductItem'
 import ProductsList from '../components/ProductsList'

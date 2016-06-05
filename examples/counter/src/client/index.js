@@ -3,15 +3,15 @@ import {render} from 'react-dom'
 import {Provider} from 'react-redux'
 import {createStore, applyMiddleware, combineReducers} from 'redux'
 
-import SocketIoServerCommunicator from 'redux-live/lib/client/server-communicator/SocketIoServerCommunicator'
-import {createReduxLiveMiddleware, reduxLiveReducer} from 'redux-live/lib/client'
+import ServerCommunicator from 'redux-live-socketio/ServerCommunicator'
+import {createReduxLiveMiddleware, reduxLiveReducer} from 'redux-live/client'
 
 import Counter from './components/Counter'
 import counter from '../shared/reducers/index'
 
 require("babel-polyfill");
 
-const serverCommunicator = new SocketIoServerCommunicator();
+const serverCommunicator = new ServerCommunicator();
 const reduxLiveMiddleware = createReduxLiveMiddleware(serverCommunicator);
 
 const initialState = {

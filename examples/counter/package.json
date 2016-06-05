@@ -1,13 +1,13 @@
 {
   "name": "redux-live-counter-example",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Redux Live counter example",
   "scripts": {
     "clean": "rm -rf build",
-    "compile": "npm run compile:server && npm run compile:shared && npm run compile:client",
-    "compile:server": "babel src/server -d build/server",
-    "compile:shared": "babel src/shared -d build/shared",
-    "compile:client": "mkdir -p build/client && browserify src/client/index.js -t babelify -o build/client/bundle.js",
+    "build": "npm run build:server && npm run build:shared && npm run build:client",
+    "build:server": "babel src/server -d build/server",
+    "build:shared": "babel src/shared -d build/shared",
+    "build:client": "mkdir -p build/client && browserify src/client/index.js -t babelify -o build/client/bundle.js",
     "start": "node build/server/index"
   },
   "repository": {
@@ -27,7 +27,9 @@
     "react-dom": "^15.1.0",
     "react-redux": "^4.4.5",
     "redux": "^3.5.2",
-    "redux-live": "0.0.3"
+    "redux-live": "0.0.5",
+    "redux-live-socketio": "0.0.1",
+    "redux-live-localdb": "0.0.1"
   },
   "devDependencies": {
     "babel-cli": "^6.9.0",

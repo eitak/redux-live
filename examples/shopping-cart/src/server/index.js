@@ -5,10 +5,10 @@ import _ from 'lodash'
 import {createStore, applyMiddleware} from 'redux'
 import uuid from 'node-uuid'
 
-import LocalDb from 'redux-live/lib/server/db/LocalDb'
-import SocketIoClientCommunicator from 'redux-live/lib/server/client-communicator/SocketIoClientCommunicator'
-import ReduxLiveServer from 'redux-live/lib/server'
-import {SUBSCRIBE_TO_STREAM} from 'redux-live/lib/shared/constants/ActionTypes'
+import LocalDb from 'redux-live-localdb'
+import ClientCommunicator from 'redux-live-socketio/ClientCommunicator'
+import {ReduxLiveServer} from 'redux-live/server'
+import {ReduxLiveActionTypes} from 'redux-live/shared'
 
 import {cart, product} from '../shared/reducers/index'
 import createCart from './createCart'
@@ -58,7 +58,7 @@ db.createStream({topic: 'products', id: 'product-3'}, {
     "inventory": 5
 });
 
-const clientCommunicator = new SocketIoClientCommunicator(server, streamId => streamId.topic + '/' + streamId.id);
+const clientCommunicator = new ClientCommunicator(server, streamId => streamId.topic + '/' + streamId.id);
 
 const reduxLiveServer = new ReduxLiveServer({
     getReducer: streamId => {
@@ -72,7 +72,7 @@ clientCommunicator.onNewClient(clientId => {
     const cartId = uuid.v4();
     createCart(reduxLiveServer, cartId);
     clientCommunicator.sendActionToClient(clientId, {
-        type: SUBSCRIBE_TO_STREAM,
+        type: ReduxLiveActionTypes.SUBSCRIBE_TO_STREAM,
         streamId: {
             topic: 'carts',
             id: cartId

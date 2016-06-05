@@ -3,9 +3,9 @@ import http from 'http'
 import path from 'path'
 import {createStore, applyMiddleware} from 'redux'
 
-import LocalDb from 'redux-live/lib/server/db/LocalDb'
-import SocketIoClientCommunicator from 'redux-live/lib/server/client-communicator/SocketIoClientCommunicator'
-import ReduxLiveServer from 'redux-live/lib/server'
+import LocalDb from 'redux-live-localdb'
+import ClientCommunicator from 'redux-live-socketio/ClientCommunicator'
+import {ReduxLiveServer} from 'redux-live/server'
 
 import counter from '../shared/reducers/index'
 
@@ -44,7 +44,7 @@ app.get('/', (req, res) => {
  */
 const db = new LocalDb();
 db.createStream('counter', {value: 0});
-const clientCommunicator = new SocketIoClientCommunicator(server);
+const clientCommunicator = new ClientCommunicator(server);
 
 const reduxLiveServer = new ReduxLiveServer({reducer: counter, db, clientCommunicator});
 
