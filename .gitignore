@@ -1,5 +1,9 @@
 .idea
 node_modules
-lib
+/lib
 build
 coverage
+/index.js
+/client.js
+/server.js
+/shared.js

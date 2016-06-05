@@ -7,11 +7,11 @@
   },
   "main": "lib/index.js",
   "scripts": {
-    "clean": "rm -rf lib coverage",
+    "clean": "rm -rf lib coverage index.js client.js server.js shared.js",
     "test": "mocha --compilers js:babel-register --reporter nyan --recursive",
     "test:coverage": "babel-node node_modules/isparta/bin/isparta cover --report html --include-all-sources node_modules/mocha/bin/_mocha -- --reporter dot --recursive",
-    "compile": "babel -d lib/ src/",
-    "prepublish": "npm run clean && npm run compile"
+    "build": "babel -d ./ src/",
+    "prepublish": "npm run clean && npm run build"
   },
   "author": "eitak",
   "license": "ISC",
@@ -35,13 +35,11 @@
     "babel-register": "^6.9.0",
     "isparta": "^4.0.0",
     "mocha": "^2.5.3",
+    "redux-live-localdb": "0.0.1",
     "should": "^8.4.0"
   },
   "dependencies": {
     "lodash": "^4.13.1",
-    "object-hash": "^1.1.2",
-    "redux": "^3.5.2",
-    "socket.io": "^1.4.5",
-    "socket.io-client": "^1.4.5"
+    "redux": "^3.5.2"
   }
 }

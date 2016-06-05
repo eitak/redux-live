@@ -1,7 +1,7 @@
-import LocalDb from '../../src/server/db/LocalDb'
-import ReduxLiveServer from '../../src/server'
+import LocalDb from 'redux-live-localdb'
+import ReduxLiveServer from '../../../src/lib/server/ReduxLiveServer'
 
-import {SET_STREAM_INITIAL_STATE} from '../../src/shared/constants/ActionTypes'
+import {SET_STREAM_INITIAL_STATE} from '../../../src/lib/shared/constants/ActionTypes'
 
 require("babel-polyfill");
 require('should');
@@ -50,16 +50,18 @@ describe('ReduxLiveServer', () => {
             const action = {type: 'ACTION_1', reduxLive: {streamId: 'test-stream', sequenceNumber: 1}};
 
             // when
-            underTest.start();
+            await underTest.start();
             await sendActionFromClient(action);
 
             // then
+            const savedAction = await db.getAction('test-stream', 1);
+            savedAction.reduxLive.sequenceNumber.should.eql(1);
+            savedAction.reduxLive.streamId.should.eql('test-stream');
+            savedAction.type.should.eql('ACTION_1');
+
             const snapshot = await db.getSnapshot('test-stream');
             snapshot.reduxLive.sequenceNumber.should.eql(1);
-            snapshot.actions.should.eql([action]);
-
-            const savedAction = await db.getAction('test-stream', 1);
-            savedAction.should.eql(action)
+            snapshot.actions.should.eql([savedAction]);
         });
 
         it('should send new actions to clients after starting', async () => {
@@ -67,7 +69,7 @@ describe('ReduxLiveServer', () => {
             const action = {type: 'TEST_ACTION', reduxLive: {streamId: 'test-stream', sequenceNumber: 1}};
 
             // when
-            underTest.start();
+            await underTest.start();
             await registerNewSubscription('test-client', 'test-stream');
             await db.saveAction(action);
 
@@ -77,7 +79,7 @@ describe('ReduxLiveServer', () => {
 
         it('should send initial state to new clients after starting', async () => {
             // when
-            underTest.start();
+            await underTest.start();
             await registerNewSubscription('test-client', 'test-stream');
 
             // then
@@ -135,12 +137,14 @@ describe('ReduxLiveServer', () => {
             await underTest.saveAction(action);
 
             // then
+            const savedAction = await db.getAction('test-stream', 1);
+            savedAction.reduxLive.sequenceNumber.should.eql(1);
+            savedAction.reduxLive.streamId.should.eql('test-stream');
+            savedAction.type.should.eql('ACTION_1');
+
             const snapshot = await db.getSnapshot('test-stream');
             snapshot.reduxLive.sequenceNumber.should.eql(1);
-            snapshot.actions.should.eql([action]);
-
-            const savedAction = await db.getAction('test-stream', 1);
-            savedAction.should.eql(action)
+            snapshot.actions.should.eql([savedAction]);
         });
 
         it('should save actions where the parent is not the last saved action', async () => {
@@ -153,14 +157,15 @@ describe('ReduxLiveServer', () => {
             await underTest.saveAction(action2);
 
             // then
-            const expectedAction = {type: '(CLIENTxSERVER)', reduxLive: {streamId: 'test-stream', sequenceNumber: 2}};
+            const savedAction = await db.getAction('test-stream', 2);
+            savedAction.reduxLive.sequenceNumber.should.eql(2);
+            savedAction.reduxLive.streamId.should.eql('test-stream');
+            savedAction.type.should.eql('(CLIENTxSERVER)');
 
             const snapshot = await db.getSnapshot('test-stream');
             snapshot.reduxLive.sequenceNumber.should.eql(2);
-            snapshot.actions.should.eql([action1, expectedAction]);
-
-            const savedAction = await db.getAction('test-stream', 2);
-            savedAction.should.eql(expectedAction)
+            snapshot.actions.should.have.lengthOf(2);
+            snapshot.actions[1].should.eql(savedAction)
         });
 
         it('should retry saving actions when the state changes in between retrieving actions and attempting save', () => {

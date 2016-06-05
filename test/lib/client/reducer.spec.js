@@ -1,7 +1,7 @@
 import {createStore} from 'redux'
 
-import reduxLiveReducer from '../../src/client/reduxLiveReducer'
-import {SET_STREAM_INITIAL_STATE, CONFIRM_ACTION, UNSUBSCRIBE_TO_STREAM} from '../../src/shared/constants/ActionTypes'
+import reduxLiveReducer from '../../../src/lib/client/reduxLiveReducer'
+import {SET_STREAM_INITIAL_STATE, CONFIRM_ACTION, UNSUBSCRIBE_TO_STREAM} from '../../../src/lib/shared/constants/ActionTypes'
 
 require('should');
 

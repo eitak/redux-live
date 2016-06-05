@@ -1,7 +1,7 @@
 import _ from 'lodash'
 
 import {SET_STREAM_INITIAL_STATE, CONFIRM_ACTION, UNSUBSCRIBE_TO_STREAM, SUBSCRIBE_TO_STREAM} from '../shared/constants/ActionTypes'
-import {defaultMergeActions} from '../shared/Defaults'
+import {defaultMergeActions} from '../shared/defaults'
 
 const streamActionTypes = [UNSUBSCRIBE_TO_STREAM, SUBSCRIBE_TO_STREAM, SET_STREAM_INITIAL_STATE];
 
